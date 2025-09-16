@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Spinner Display</title>
+<style>
+  /* make the image occupy the whole viewport */
+  html,body { height:100%; margin:0; background:#000; }
+  #frame {
+    display:block;
+    width:100vw;
+    height:100vh;
+    object-fit:contain; /* use 'cover' if you prefer cropping to fill */
+    background:#000;
+    user-select:none;
+    -webkit-user-drag: none;
+  }
+  /* hide cursor after a short idle period for cleaner display (optional) */
+  body.idle { cursor:none; }
+</style>
+</head>
+<body>
+  <img id="frame" src="" alt="slide" draggable="false" />
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+/*
+  CONFIG - Edit these values for your environment
+*/
+const BROKER = "192.168.68.80";   // MQTT broker IP (or hostname)
+const PORT   = 9001;              // MQTT websocket port (9001 by default in this setup)
+const TOPIC  = "spinner/slideshow"; // topic to subscribe
+const USE_WSS = false;            // set true if your broker uses wss (TLS)
+const MQTT_USER = null;           // optional username
+const MQTT_PASS = null;           // optional password
+
+/* ---------------------------------------------------------
+   DO NOT CHANGE BELOW THIS LINE (unless you know what you're doing)
+   --------------------------------------------------------- */
+const frame = document.getElementById('frame');
+
+let lastSeq = -1;
+let loading = false;
+let pendingMsg = null;
+let client = null;
+
+function connect() {
+  const scheme = USE_WSS ? 'wss' : 'ws';
+  const url = `${scheme}://${BROKER}:${PORT}`;
+  const opts = { reconnectPeriod: 2000, connectTimeout: 30000 };
+  if (MQTT_USER) opts.username = MQTT_USER;
+  if (MQTT_PASS) opts.password = MQTT_PASS;
+
+  console.info('MQTT connecting to', url);
+  client = mqtt.connect(url, opts);
+
+  client.on('connect', () => {
+    console.info('MQTT connected — subscribing to', TOPIC);
+    client.subscribe(TOPIC, { qos: 0 }, (err) => {
+      if (err) console.error('Subscribe error:', err);
+    });
+  });
+
+  client.on('reconnect', () => console.info('MQTT reconnecting...'));
+  client.on('close',    () => console.warn('MQTT connection closed'));
+  client.on('offline',  () => console.warn('MQTT offline'));
+  client.on('error',    (e) => console.error('MQTT error:', e));
+
+  client.on('message', (topic, payload) => {
+    try {
+      const s = payload.toString();
+      console.log('MQTT message', topic, s);
+      const msg = JSON.parse(s);
+      handleSlide(msg);
+    } catch (e) {
+      console.error('Failed to parse MQTT payload:', e, payload.toString());
+    }
+  });
+}
+
+/*
+  handleSlide(msg)
+  msg should be an object: { type: "image", url: "...", seq: <number>, ts: <number>, ... }
+*/
+function handleSlide(msg) {
+  if (!msg || msg.type !== 'image' || !msg.url) {
+    console.warn('Ignoring non-image or malformed message:', msg);
+    return;
+  }
+
+  const seq = (typeof msg.seq === 'number') ? msg.seq : Date.now();
+
+  if (seq <= lastSeq) {
+    console.debug('Dropping older or duplicate seq', seq, '<=', lastSeq);
+    return;
+  }
+
+  // If an image is currently preloading, keep the newest message pending
+  if (loading) {
+    console.debug('Image currently loading, queueing latest message (latest wins).');
+    pendingMsg = msg;
+    return;
+  }
+
+  lastSeq = seq;
+  pendingMsg = null;
+  preloadAndShow(msg.url, seq, msg);
+}
+
+// Preload the image (cache-busted) and set frame.src on successful load.
+// On error we log to console and still set src so network inspector can show status.
+function preloadAndShow(url, seq, meta) {
+  loading = true;
+  console.info(`Preloading image seq=${seq} url=${url}`);
+
+  const img = new Image();
+  const cacheBusted = url + (url.includes('?') ? '&' : '?') + '_cb=' + Date.now();
+
+  img.onload = () => {
+    console.info(`Image seq=${seq} loaded successfully — displaying.`);
+    frame.src = img.src;
+    loading = false;
+    // if a later message arrived while loading, handle it now (last one wins)
+    if (pendingMsg) {
+      const next = pendingMsg;
+      pendingMsg = null;
+      handleSlide(next);
+    }
+  };
+
+  img.onerror = (ev) => {
+    console.error(`Image seq=${seq} failed to load (onerror).`, ev);
+    // still set the src to let the network panel show the HTTP result
+    frame.src = cacheBusted;
+    loading = false;
+    if (pendingMsg) {
+      const next = pendingMsg;
+      pendingMsg = null;
+      handleSlide(next);
+    }
+  };
+
+  // start preload
+  img.src = cacheBusted;
+}
+
+/* small idle cursor hide for nicer display (optional) */
+let idleTimer = null;
+function resetIdle() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(()=>document.body.classList.add('idle'), 2500);
+}
+['mousemove','touchstart','keydown'].forEach(e => document.addEventListener(e, resetIdle));
+resetIdle();
+
+/* allow pressing 'f' to request fullscreen (useful for kiosk) */
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'f' || ev.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen().catch(()=>{});
+  }
+});
+
+// Start connection
+connect();
+
+// expose for debug from console
+window._spinnerDisplay = { client, handleSlide, preloadAndShow };
+</script>
+</body>
+</html>
