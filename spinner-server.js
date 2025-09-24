@@ -18,12 +18,22 @@ const dateHandler    = require("./handlers/dateHandler");
 const photoHandler   = require("./handlers/photoHandler");
 const peopleHandler  = require("./handlers/peopleHandler");
 const friendHandler  = require("./handlers/friendHandler");
+const birthFamHandler = require('./handlers/birthFamHandler');
+const cousinsHandler = require('./handlers/cousinsHandler');
+const afamilyHandler = require('./handlers/afamilyHandler');
+const distanceHandler = require('./handlers/distanceHandler');
+const daysHandler = require('./handlers/daysHandler');
 
 const handlers = {
   "spinner/date":        dateHandler,
   "spinner/date/count":  photoHandler,
   "spinner/people":      peopleHandler,
-  "spinner/friend":      friendHandler
+  "spinner/friend":      friendHandler,
+  "spinner/birthfam":    birthFamHandler,
+  "spinner/cousin":     cousinsHandler,
+  "spinner/afamily":     afamilyHandler,
+  "spinner/distance":    distanceHandler,
+  "spinner/days":    distanceHandler
 };
 
 // ───── Album map for max-count topics (same) ─────

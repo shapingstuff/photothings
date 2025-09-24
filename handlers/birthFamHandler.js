@@ -1,28 +1,26 @@
-// handlers/friendHandler.js
+// handlers/birthFamHandler.js
 // Name -> album-UID mapping (edit these to your album UIDs)
 const NAME_TO_ALBUM_UID = {
-  "Bronn": "at2u39jekkjepob1",
-  "School": "at2u39t6peve5k3f",
-  "Seth": "at2u3816zsbnekek",
-  "Bo": "at2u398e63qfpjjb",
-  "Esta": "at2u37og15surzdv",
-  "Asha": "at2u32z1a54xvnz2"
-  // add more: "Name": "AlbumUID",
+  "Peter": "at2u5p5lqxdwceoi",
+  "Gillian": "at2u5pi5g7s6q7r5",
+  "Mia": "at2u4b9k8wxixf3u",
+  "Joey": "at2u5npkb5vd3cn5",
+  "Cian": "uat2u5o64ty38d3ou",
+  "Shannon": "at2u5orh77y2hn0i"
 };
 
-// 5 seconds per slide
+// 5 seconds per slide (same as friendHandler)
 const SLIDE_INTERVAL_MS = 5000;
 
-// NOTE: this file expects a working `fetch(...)` in the runtime. If your Node version
-// does not expose global fetch, ensure spinner-server bootstrap provides it (or install node-fetch).
-module.exports = async function friendHandler(payload, { photoprism } = {}) {
+// NOTE: requires a working `fetch(...)` in the runtime.
+module.exports = async function birthFamHandler(payload, { photoprism } = {}) {
   if (!payload || !payload.name) {
-    console.warn('[friendHandler] missing payload.name');
+    console.warn('[birthFamHandler] missing payload.name');
     return null;
   }
 
   const name = String(payload.name).trim();
-  console.log("▶️ [friendHandler] got name:", name);
+  console.log("▶️ [birthFamHandler] got name:", name);
 
   // Determine whether we have an explicit album UID for this name
   const albumUID = NAME_TO_ALBUM_UID.hasOwnProperty(name) ? NAME_TO_ALBUM_UID[name] : null;
@@ -41,7 +39,7 @@ module.exports = async function friendHandler(payload, { photoprism } = {}) {
     const list = Array.isArray(json) ? json : (json.Photos || []);
 
     if (!list || list.length === 0) {
-      console.warn(`⚠️ [friendHandler] no photos found for ${name} (albumUID=${albumUID || 'N/A'})`);
+      console.warn(`⚠️ [birthFamHandler] no photos found for ${name} (albumUID=${albumUID || 'N/A'})`);
       return null;
     }
 
@@ -51,7 +49,7 @@ module.exports = async function friendHandler(payload, { photoprism } = {}) {
       .filter(Boolean);
 
     if (!hashes.length) {
-      console.warn(`⚠️ [friendHandler] no usable hash fields for ${name}`);
+      console.warn(`⚠️ [birthFamHandler] no usable hash fields for ${name}`);
       return null;
     }
 
@@ -66,7 +64,7 @@ module.exports = async function friendHandler(payload, { photoprism } = {}) {
       intervalMs: SLIDE_INTERVAL_MS
     };
   } catch (err) {
-    console.error("❌ [friendHandler] fetch error:", err);
+    console.error("❌ [birthFamHandler] fetch error:", err);
     return null;
   }
 };
