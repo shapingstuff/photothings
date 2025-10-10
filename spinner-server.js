@@ -256,7 +256,7 @@ async function handleAlbumNav(uid, payload) {
   } else if (cmd === "goto" && Number.isInteger(payload.index)) {
     idx = payload.index;
   } else if (cmd === "get") {
-    console.log(`📥 [album ${uid}] received GET command - resetting to start`);
+    console.log(`📥 [album ${uid}] received GET command`);
     
     // Ensure photos loaded
     if (!meta.photos || meta.photos.length === 0) {
@@ -264,11 +264,8 @@ async function handleAlbumNav(uid, payload) {
       meta.preloadAt = Date.now();
     }
     
-    // Reset to index 0 (start of album) on GET
-    meta.globalIndex = 0;
-    
-    // Just publish current photo (now at index 0)
-    publishPhotoObject(uid, 0);
+    // Just publish current photo (no manifest needed)
+    publishPhotoObject(uid, meta.globalIndex ?? 0);
     return;
   } else {
     console.warn(`⚠️  [album ${uid}] unknown cmd: ${cmd}`);

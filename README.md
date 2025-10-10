@@ -1,3 +1,7 @@
+** http://192.168.68.80:8000/ -- slideshow
+
+** To test the spinner server wiht real-time logs: sudo journalctl -u spinner-server.service -f
+
 This is the correct path: /home/admin/Photothings
 
 There is a seperate startup_server so the other service can be used for devleopment whilst still having a working version
